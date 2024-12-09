@@ -8,6 +8,7 @@ import java.util.List;
 
 import com.demo.entities.OrderDetails;
 import com.demo.entities.Orders;
+import com.demo.entities.PublicKeyUser;
 import com.demo.entities.Users;
 
 import DB.ConnectDB;
@@ -294,6 +295,50 @@ public class OrderModel {
 			}
 			return ordersList;
 		}
+		// lay ra chu ki dua vao orderId
+		public static String getSignatureById(int idOrder) {
+			try {
+				PreparedStatement ps = ConnectDB.connection().prepareStatement("SELECT signature FROM orders WHERE id = ?");
+				ps.setInt(1, idOrder);
+				ResultSet rs = ps.executeQuery();
+				while (rs.next()) {
+					return rs.getString("signature");
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		    return null;
+		}
+		// lay ra danh sach publickeyuser cua user dua vao id va thoi gian tao
+		public List<PublicKeyUser> getPublicKeyById(int id, Timestamp orderDate) {
+		    List<PublicKeyUser> publicKeyUserList = new ArrayList<>();
+		    
+		    String sql = "SELECT publicKey, expired, createAt FROM public_key_signature " +
+		                 "WHERE idAccount = ? AND ((createAt < ? AND ? < expired) OR (expired IS NULL))";
+
+		    try (PreparedStatement ps = ConnectDB.connection().prepareStatement(sql)) {
+		        // Gán giá trị cho các tham số trong câu lệnh SQL
+		        ps.setInt(1, id);
+		        ps.setTimestamp(2, orderDate);
+		        ps.setTimestamp(3, orderDate);
+		        
+		        try (ResultSet rs = ps.executeQuery()) {
+		            // Duyệt qua từng dòng kết quả
+		            while (rs.next()) {
+		                PublicKeyUser publicKeyUser = new PublicKeyUser();
+		                publicKeyUser.setPublicKey(rs.getString("publicKey"));
+		                publicKeyUser.setExpire(rs.getTimestamp("expired"));
+		                publicKeyUser.setCreatedAt(rs.getTimestamp("createAt"));
+		                publicKeyUserList.add(publicKeyUser);
+		            }
+		        }
+		    } catch (Exception e) {
+		        e.printStackTrace(); 
+		    }
+		    
+		    return publicKeyUserList;
+		}
+		
 public static void main(String[] args) {
 	OrderModel orderModel = new OrderModel();
 	System.out.println(orderModel.calculateTotalMoney(Timestamp.valueOf("2024-07-14 00:00:00"), Timestamp.valueOf("2024-07-20 23:59:59")));
