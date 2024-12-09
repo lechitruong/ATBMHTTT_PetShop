@@ -6,16 +6,16 @@ public class PublicKeyUser {
 	private int id;
     private String publicKey;
     private Timestamp createdAt;
-    private Timestamp updatedAt;
+    private Timestamp expire;
 	public PublicKeyUser() {
 		super();
 	}
-	public PublicKeyUser(int id, String publicKey, Timestamp createdAt, Timestamp updatedAt) {
+	public PublicKeyUser(int id, String publicKey, Timestamp createdAt, Timestamp expire) {
 		super();
 		this.id = id;
 		this.publicKey = publicKey;
 		this.createdAt = createdAt;
-		this.updatedAt = updatedAt;
+		this.expire = expire;
 	}
 	public int getId() {
 		return id;
@@ -35,16 +35,17 @@ public class PublicKeyUser {
 	public void setCreatedAt(Timestamp createdAt) {
 		this.createdAt = createdAt;
 	}
-	public Timestamp getUpdatedAt() {
-		return updatedAt;
+	public Timestamp getExpire() {
+		return expire;
 	}
-	public void setUpdatedAt(Timestamp updatedAt) {
-		this.updatedAt = updatedAt;
+	public void setExpire(Timestamp expire) {
+		this.expire = expire;
 	}
 	@Override
 	public String toString() {
-		return "PublicKeyUser [id=" + id + ", publicKey=" + publicKey + ", createdAt=" + createdAt + ", updatedAt="
-				+ updatedAt + "]";
+		return "PublicKeyUser [id=" + id + ", publicKey=" + publicKey + ", createdAt=" + createdAt + ", expire="
+				+ expire + "]";
 	}
+	
     
 }

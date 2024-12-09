@@ -12,6 +12,25 @@ private double totalMoney;
 private int status;
 private int userId;
 private int addressId;
+private String signature;
+private int publicKeyId;
+
+
+public Orders(int id, String phoneNumber, String email, String note, Timestamp orderDate, double totalMoney, int status,
+		int userId, int addressId, String signature, int publicKeyId) {
+	super();
+	this.id = id;
+	this.phoneNumber = phoneNumber;
+	this.email = email;
+	this.note = note;
+	this.orderDate = orderDate;
+	this.totalMoney = totalMoney;
+	this.status = status;
+	this.userId = userId;
+	this.addressId = addressId;
+	this.signature = signature;
+	this.publicKeyId = publicKeyId;
+}
 
 public Orders(int id, String phoneNumber, String email, String note, Timestamp orderDate, double totalMoney, int status,
 		int userId, int addressId) {
@@ -100,6 +119,23 @@ public String getEmail() {
 
 public void setEmail(String email) {
 	this.email = email;
+}
+
+
+public String getSignature() {
+	return signature;
+}
+
+public void setSignature(String signature) {
+	this.signature = signature;
+}
+
+public int getPublicKeyId() {
+	return publicKeyId;
+}
+
+public void setPublicKeyId(int publicKeyId) {
+	this.publicKeyId = publicKeyId;
 }
 
 @Override
