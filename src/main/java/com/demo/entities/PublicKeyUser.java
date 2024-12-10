@@ -4,19 +4,23 @@ import java.sql.Timestamp;
 
 public class PublicKeyUser {
 	private int id;
+	private int idUser;
     private String publicKey;
     private Timestamp createdAt;
     private Timestamp expire;
 	public PublicKeyUser() {
 		super();
 	}
-	public PublicKeyUser(int id, String publicKey, Timestamp createdAt, Timestamp expire) {
+
+	public PublicKeyUser(int id, int idUser, String publicKey, Timestamp createdAt, Timestamp expire) {
 		super();
 		this.id = id;
+		this.idUser = idUser;
 		this.publicKey = publicKey;
 		this.createdAt = createdAt;
 		this.expire = expire;
 	}
+
 	public int getId() {
 		return id;
 	}
@@ -41,11 +45,22 @@ public class PublicKeyUser {
 	public void setExpire(Timestamp expire) {
 		this.expire = expire;
 	}
+	
+	public int getIdUser() {
+		return idUser;
+	}
+
+	public void setIdUser(int idUser) {
+		this.idUser = idUser;
+	}
+
 	@Override
 	public String toString() {
-		return "PublicKeyUser [id=" + id + ", publicKey=" + publicKey + ", createdAt=" + createdAt + ", expire="
-				+ expire + "]";
+		return "PublicKeyUser [id=" + id + ", idUser=" + idUser + ", publicKey=" + publicKey + ", createdAt="
+				+ createdAt + ", expire=" + expire + "]";
 	}
+
+	
 	
     
 }
