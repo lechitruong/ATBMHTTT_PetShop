@@ -57,6 +57,8 @@ public class LoginServlet extends HttpServlet {
 			doGet_Verify(request, response);
 		} else if (action.equalsIgnoreCase("message")) {
 			doGet_Message(request, response);
+		}else if(action.equalsIgnoreCase("createkey")) {
+			doGet_CreateKey(request, response);
 		}
 
 	}
@@ -72,6 +74,11 @@ public class LoginServlet extends HttpServlet {
 		request.getRequestDispatcher("/WEB-INF/views/login/message.jsp").forward(request, response);
 
 	}
+	protected void doGet_CreateKey(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		request.getRequestDispatcher("/WEB-INF/views/login/create_key.jsp").forward(request, response);
+
+	}
 
 // xac thuc bang email
 	protected void doGet_Verify(HttpServletRequest request, HttpServletResponse response)
@@ -85,7 +92,8 @@ public class LoginServlet extends HttpServlet {
 				if (userModel.update(user)) {
 					LogModel logModel = new LogModel();
 					logModel.create(new Log(IPAddressUtil.getPublicIPAddress(),"info",ConfigIP.ipconfig(request).getCountryLong(),new Timestamp(new Date().getTime()), "Đang đăng ký", "Đã đăng ký tài khoản thành công", user.getId()));
-					response.sendRedirect("login");
+					request.getSession().setAttribute("username", username);
+					response.sendRedirect("rsa");
 				}	
 		} else {
 			request.getSession().setAttribute("error", "xac thuc khong thanh cong");
@@ -124,7 +132,10 @@ public class LoginServlet extends HttpServlet {
 			doPost_Login(request, response);
 		} else if (action.equalsIgnoreCase("register")) {
 			doPost_Register(request, response);
-		} 
+		} else if(action.equalsIgnoreCase("createkey")){
+			doPost_CreateKey(request, response);
+		}
+
 	}
 
 	protected void doPost_Index(HttpServletRequest request, HttpServletResponse response)
@@ -180,6 +191,32 @@ public class LoginServlet extends HttpServlet {
 	
 
 	protected void doPost_Register(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		String username = request.getParameter("username");
+		String email = request.getParameter("email");
+		String password = request.getParameter("password");
+		String securityCode = RandomStringHelper.generateRandomString(6);
+		UserModel userModel = new UserModel();
+		Users user = new Users();
+		user.setUserName(username);
+		user.setPassword(BCrypt.hashpw(password, BCrypt.gensalt()));
+		user.setEmail(email);
+		user.setSecurityCode(securityCode);
+		user.setRoleId(2);
+		user.setStatus(false);
+		user.setBirthday(new java.util.Date());
+		if (userModel.create(user)) {
+			MailHelper.MailHelper(email, "Xác thực tài khoản của bạn",
+					"Bạn hãy bấm vào " + "<a href='http://localhost:8080/PetShop/login?action=verify&username="
+							+ username + "" + "&securityCode=" + securityCode
+							+ "'>liên kết</a> này để xác thực tài khoản");
+			response.sendRedirect("login?action=message");
+		} else {
+			System.out.println("Tao tai khoan khong thanh cong");
+		}
+
+	}
+	protected void doPost_CreateKey(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		String username = request.getParameter("username");
 		String email = request.getParameter("email");
