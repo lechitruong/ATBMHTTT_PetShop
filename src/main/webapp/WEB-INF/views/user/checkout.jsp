@@ -83,7 +83,7 @@ display:none;
 						<p>Vui lòng điền thông tin</p>
 						<!-- Form -->
 						<form class="form" method="post"
-							action="${pageContext.request.contextPath }/checkout?action=dathang">
+							action="${pageContext.request.contextPath }/checkout?action=dathang" onsubmit="return false;">
 							<div class="row">
 								<div class="col-lg-6 col-md-6 col-12">
 									<div class="form-group">
@@ -113,7 +113,7 @@ display:none;
 								<div class="col-lg-6 col-md-6 col-12">
 									<div class="form-group">
 										<label for="country">Tỉnh/Thành Phố<span>*</span></label> <select
-											class="select_option" name="country_checkout" id="country">
+											class="select_option" name="country" id="country">
 											<option id=""
 												value="<%=addressModel.findAddressByIdUser(user.getId()).getCountry()%>"><%=addressModel.findAddressByIdUser(user.getId()).getCountry()%></option>
 										</select>
@@ -122,7 +122,7 @@ display:none;
 								<div class="col-lg-6 col-md-6 col-12">
 									<div class="form-group">
 										<label for="district">Quận/Huyện<span>*</span></label> <select
-											class="select_option" name="district_checkout" id="district">
+											class="select_option" name="district" id="district">
 											<option id=""
 												value="<%=addressModel.findAddressByIdUser(user.getId()).getDistrict()%>"><%=addressModel.findAddressByIdUser(user.getId()).getDistrict()%></option>
 										</select>
@@ -131,7 +131,7 @@ display:none;
 								<div class="col-lg-6 col-md-6 col-12">
 									<div class="form-group">
 										<label for="ward">Xã/Phường<span>*</span></label> <select
-											class="select_option" name="ward_checkout" id="ward">
+											class="select_option" name="ward" id="ward">
 											<option id=""
 												value="<%=addressModel.findAddressByIdUser(user.getId()).getWard()%>"><%=addressModel.findAddressByIdUser(user.getId()).getDistrict()%></option>
 										</select>
@@ -172,29 +172,12 @@ display:none;
 								<ul>
 									 <li>Tổng hàng<span id="totalAmount"><%= itemModel.total(cart) %></span> (triệu đồng)</li>
 									 <input type="hidden" name="totalhidden" value="<%= itemModel.total(cart) %>" />
+									 
     <!--  <li>(+) Giao hàng<span id="shippingFee">0.1</span> (triệu đồng)</li>  --> 
       <li class="last">Tổng<span class="finalAmount"><%= itemModel.total(cart) %></span> (triệu đồng)</li>
 								</ul>
 							</div>
 						</div>
-						<!--/ End Order Widget -->
-						<!-- Check private key -->
-						<div class="single-widget" style="margin-top: 10px; padding: unset">
-							<h2>Check đơn hàng</h2>
-							<div class="content">
-								<div class="field__input-btn-wrapper">
-                                        <div class="field__input-wrapper" style="margin-left: 30px;">
-                                            <label for="privateKey" class="field__label" style="transition: all .2s ease-out;
-    -webkit-transition: all .2s ease-out;">Nhập private key</label>
-                                            <input name="privateKey" id="privateKey"
-                                                   type="text" class="field__input" required>
-                                        </div>
-                                    </div>
-                                    <p id="error-key" style="color: red; margin-left: 30px;">Private key không hợp lệ. Vui lòng kiểm tra lại!</p>
-							</div>
-						</div>
-						<!--/ End Check private key -->
-						<!-- Order Widget -->
 						<div class="single-widget">
         <h2>Phương thức thanh toán</h2>
         <div class="content" style="margin:10px 25px;">
@@ -212,7 +195,7 @@ display:none;
     <div class="single-widget get-button">
         <div class="content">
             <div class="button">
-                <button id="btnDatHang" class="btn" type="submit">Đặt hàng</button>
+                <button id="btnDatHang" class="btn btndathang" type="submit">Ký hàng</button>
             </div>
         </div>
     </div>
@@ -221,7 +204,79 @@ display:none;
 		</div>
 	</section>
 	<!--/ End Checkout -->
+<div id="dialog1" style="display: none;" title="Basic dialog">
+	<p>Mã hash đơn hàng của bạn là: <span id="mahash"></span></p>
+	<p>Chữ ký của bạn là: <span id="chuky"></span></p>
+	<button id="batdauky">Xác nhận</button>
+</div>
 
+
+<script>
+	$(function() {
+		$(".btndathang").click(function() {
+			console.log("aaa");
+			var name = $('input[name="fullName"]').val();
+			var phoneNumber = $('input[name="phoneNumber"]').val();
+			var email = $('input[name="email"]').val();
+			var country = $('#country option:selected').text();
+			var district = $('#district option:selected').text();
+			var ward = $('#ward option:selected').text();
+			var address_checkout = $('input[name="address_checkout"]').val();
+			var note = $('textarea[name="note"]').val();
+			var payment_method = $('input[name="payment_method"]:checked').val();
+			 // Hiển thị dialog
+			$("#dialog1").dialog();
+			$("#dialog1").css('display', 'block'); 
+
+			// Gửi yêu cầu AJAX
+	        $.ajax({
+	             url: "${pageContext.request.contextPath}/checkout", 
+	             type: 'POST',
+	             data: {
+	                 action: 'dathang',
+	                 name: name,
+	                 phoneNumber: phoneNumber,
+	                 email: email,
+	                 country: country,
+	                 district: district,
+	                 ward: ward,
+	                 address_checkout: address_checkout,
+	                 note: note   ,
+	                 payment_method: payment_method
+	             },
+	             success: function(hash) {
+					    console.log(hash);
+						$('#mahash').text(hash);
+					 // Khi nhận được hash từ server, tạo WebSocket và gửi dữ liệu
+					 const socket = new WebSocket("ws://localhost:8080/PetShop/key");
+
+					 // Gửi tin nhắn khi kết nối WebSocket mở
+					 socket.addEventListener("open", function () {
+					     socket.send(hash);
+					     console.log("Sent: " + hash);
+					 });
+
+					 // Xử lý tin nhắn từ server
+					 socket.addEventListener("message", function (event) {
+					     console.log("Received: " + event.data);
+					     const chuky = document.querySelector("#chuky");
+					     chuky.textContent = event.data;
+					 });
+
+					 // Xử lý khi kết nối đóng
+					 socket.addEventListener("close", function () {
+					     console.log("WebSocket connection closed.");
+					 });
+
+					 // Xử lý lỗi WebSocket
+					 socket.addEventListener("error", function (error) {
+					     console.error("WebSocket error: ", error);
+					 });
+	             }
+	        });
+		});
+	});
+</script>
 	<!-- Start Shop Services Area  -->
 	<section class="shop-services section home">
 		<div class="container">
