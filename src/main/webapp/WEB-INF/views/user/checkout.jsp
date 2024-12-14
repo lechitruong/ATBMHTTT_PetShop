@@ -207,7 +207,7 @@ display:none;
 <div id="dialog1" style="display: none;" title="Basic dialog">
 	<p>Mã hash đơn hàng của bạn là: <span id="mahash"></span></p>
 	<p>Chữ ký của bạn là: <span id="chuky"></span></p>
-	<button id="batdauky">Xác nhận</button>
+	<button id="checkSignatureBtn">Kiểm tra chữ ký</button>
 </div>
 
 
@@ -276,6 +276,43 @@ display:none;
 	        });
 		});
 	});
+</script>
+<script>
+$(function() {
+    // Khi nhấn nút "Kiểm tra chữ ký"
+    $("#checkSignatureBtn").click(function() {
+        // Lấy mã hash từ server
+        var hash = $("#mahash").text().trim();
+        var chuky = $("#chuky").text().trim();
+
+        // Kiểm tra chữ ký qua AJAX
+        $.ajax({
+            url: "${pageContext.request.contextPath}/checkout", // Đường dẫn đến servlet hoặc controller
+            type: 'POST',
+            data: {
+                action: 'checkChuKy',  // Tạo một action để kiểm tra chữ ký
+                hash: hash,                // Gửi mã hash
+                chuky: chuky               // Gửi chữ ký cần kiểm tra
+            },
+            success: function(response) {
+                // Xử lý kết quả từ server
+                if (response === 'correct') {
+                    // Nếu chữ ký hợp lệ, hiển thị thông báo và chuyển hướng tới trang thanh toán
+                    alert("Chữ ký hợp lệ.");
+                    window.location.href = "${pageContext.request.contextPath}/bill"; // Chuyển tới trang bill
+                } else {
+                    // Nếu chữ ký không hợp lệ, hiển thị thông báo lỗi
+                    alert("Chữ ký không hợp lệ.");
+                }
+            },
+            error: function(xhr, status, error) {
+                // Xử lý lỗi nếu có
+                console.error("Lỗi khi kiểm tra chữ ký: ", error);
+                alert("Đã xảy ra lỗi khi kiểm tra chữ ký.");
+            }
+        });
+    });
+});
 </script>
 	<!-- Start Shop Services Area  -->
 	<section class="shop-services section home">

@@ -24,6 +24,7 @@ import com.demo.entities.OrderDetails;
 import com.demo.entities.OrderKey;
 import com.demo.entities.Orders;
 import com.demo.entities.Pets;
+import com.demo.entities.PublicKeyUser;
 import com.demo.entities.Users;
 import com.demo.helpers.MD5;
 import com.demo.helpers.RSA;
@@ -33,6 +34,7 @@ import com.demo.models.ItemModel;
 import com.demo.models.OrderDetailModel;
 import com.demo.models.OrderModel;
 import com.demo.models.PetModel;
+import com.demo.models.PublicKeyUserModel;
 import com.google.gson.Gson;
 
 /**
@@ -77,9 +79,40 @@ public class CheckoutServlet extends HttpServlet {
 		String action = request.getParameter("action");
 		if (action.equalsIgnoreCase("dathang")) {
 			doPost_Dathang(request, response);
+		} else if(action.equals("checkChuKy")){
+			doPost_CheckChuKy(request, response);
+			
 		}
 	}
-// khi nguoi dung dat hang
+	protected void doPost_CheckChuKy(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+	        String hash = request.getParameter("hash"); // Mã hash đơn hàng
+	        String chuky = request.getParameter("chuky"); // Chữ ký cần kiểm tra
+
+	        PublicKeyUserModel keyModel = new PublicKeyUserModel();
+	        Users user = (Users) request.getSession().getAttribute("user");
+	        RSA rsa = new RSA();
+	        PublicKeyUser key = keyModel.findByAccountID(user.getId());
+	        OrderKey orderKey = (OrderKey) request.getSession().getAttribute("orderKey");
+
+	        try {
+	            // Kiểm tra chữ ký bằng RSA
+	            boolean isValid = rsa.verify(orderKey.toString(), chuky.trim(), key.getPublicKey());
+
+	            // Gửi lại kết quả cho client
+	            if (isValid) {
+	                response.getWriter().write("correct"); // Chữ ký hợp lệ
+	            } else {
+	                response.getWriter().write("incorrect"); // Chữ ký không hợp lệ
+	            }
+	        } catch (Exception e) {
+	            response.getWriter().write("error"); // Lỗi khi kiểm tra
+	            e.printStackTrace();
+	        }
+	    }
+
+		
+
+	// khi nguoi dung dat hang
 	protected void doPost_Dathang(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 	    // String fullName = request.getParameter("fullName");
 		HttpSession session = request.getSession();
@@ -130,8 +163,7 @@ public class CheckoutServlet extends HttpServlet {
 	    }
 	    Orders order = new Orders(phoneNumber, email, new String(note.getBytes("ISO-8859-1"), "UTF-8"), new Timestamp(new Date().getTime()), itemModel.total(cart), 0, user.getId(), orderAddress.getId());
 	    List<OrderDetails> listOrderDetails = new ArrayList<OrderDetails>();
-	    if (true) {
-	    	
+	    if (orderModel.create(order)) {	
 	    	request.getSession().removeAttribute("cart");
 	        int orderId = orderModel.getLastOrder().getId(); 
 	        Bills bill = new Bills();
@@ -139,7 +171,7 @@ public class CheckoutServlet extends HttpServlet {
 	        bill.setPaymentMethod(paymentMethod.equals("2")? 2: 1); 
 	        bill.setCreateDate(new Timestamp(new Date().getTime()));
 	        bill.setStatus(false);
-	        if(true) {
+	        if(billModel.create(bill)) {
 		        for (int i = 0; i < cart.size(); i++) {
 		            OrderDetails orderDetail = new OrderDetails();
 		            orderDetail.setOrderId(orderId);
@@ -147,19 +179,19 @@ public class CheckoutServlet extends HttpServlet {
 		            orderDetail.setPetId(cart.get(i).getPet().getId());
 		            orderDetail.setMoney(cart.get(i).getPet().getMoney());
 		            listOrderDetails.add(orderDetail);
-//		            if (orderDetailModel.create(orderDetail)) {	
-//		            	Pets pet = petModel.findPetById(cart.get(i).getPet().getId());
-//		            	pet.setAmount(pet.getAmount() - cart.get(i).getQuantity());
-//		            	if(petModel.update(pet)) {
-//		            		System.out.println("true - orderdetails");	
-//		            		System.out.println("true - update amount");	
-//		            	}else {
-//		            		System.out.println("true - orderdetails");	
-//		            		System.out.println("false - update amount");	
-//		            	}
-//		            } else {
-//		                System.out.println("false - orderdetails");
-//		            }
+		            if (orderDetailModel.create(orderDetail)) {	
+		            	Pets pet = petModel.findPetById(cart.get(i).getPet().getId());
+		            	pet.setAmount(pet.getAmount() - cart.get(i).getQuantity());
+		            	if(petModel.update(pet)) {
+		            		System.out.println("true - orderdetails");	
+		            		System.out.println("true - update amount");	
+		            	}else {
+		            		System.out.println("true - orderdetails");	
+		            		System.out.println("false - update amount");	
+		            	}
+		            } else {
+		                System.out.println("false - orderdetails");
+		            }
 		        }
 		     OrderKey orderKey = new OrderKey();
 		   	 orderKey.setId(order.getId());
@@ -175,6 +207,8 @@ public class CheckoutServlet extends HttpServlet {
 		   	 orderKey.setPublicKeyId(order.getPublicKeyId());
 		   	 orderKey.setOrderDetails(listOrderDetails);
 		   	 orderKey.setPaymentMethod(paymentMethod);
+		   	 request.getSession().setAttribute("orderId", orderId);
+		   	 request.getSession().setAttribute("orderKey", orderKey);
 		   	 Gson gson = new Gson();
 		   	 String hash = md5.hashMD5(gson.toJson(orderKey));
 		   	 printWriter.write(hash);
@@ -194,7 +228,7 @@ public class CheckoutServlet extends HttpServlet {
 //		        response.sendRedirect("checkout");
 //		    
 //	        }
-		   	 System.out.println(orderKey);
+//		   	 System.out.println(orderKey);
 }
 	}
 
