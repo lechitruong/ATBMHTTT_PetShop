@@ -148,9 +148,8 @@
 											required="required" />
 									</div>
 								</div>
-
 								<div class="col-12">
-									<div class="form-group button">
+									<div class="form-group">
 										<button type="submit" class="btn">Lưu thông tin</button>
 									</div>
 								</div>
@@ -175,21 +174,12 @@
 											class="fa-solid fa-arrow-up-from-bracket"></i> &nbsp;Tải lên</label>
 										<!-- Profile picture image-->
 										<script>
-											$(document)
-													.ready(
-															function() {
-																$(
-																		"#inputAvatar")
-																		.change(
-																				function() {
-																					var tmppath = URL
-																							.createObjectURL(event.target.files[0]);
-																					$(
-																							"#imgAvatar")
-																							.attr(
-																									"src",
-																									tmppath);
-																				});
+											$(document).ready(function() {
+																$("#inputAvatar").change(
+																	function() {
+																		var tmppath = URL.createObjectURL(event.target.files[0]);
+																			$("#imgAvatar").attr("src",tmppath);
+																			});
 															});
 										</script>
 									</div>
@@ -197,6 +187,18 @@
 							</div>
 						</form>
 						<!--/ End Form -->
+						<form id="reportLostKeyForm" method="post"
+							action="${pageContext.request.contextPath}/rsa?action=reportLostKey">
+							<button type="button" class="btn btn-danger"
+								onclick="reportLostKey()">Báo mất key</button>
+						</form>
+						<h2>Tạo Key Mới</h2>
+<form action="${pageContext.request.contextPath}/rsa" method="get">
+    <input type="hidden" name="action" value="genkey">
+    <input type="submit" value="Tạo Key Mới">
+</form>
+
+
 						<style>
 /* Ẩn "No file chosen" */
 input[type="file"] {
@@ -210,42 +212,77 @@ input[type="file"] {
 	</section>
 	<!--/ End Checkout -->
 	<script>
-		function validateForm() {
-			var gender = document.getElementById("gender").value;
-			var country = document.getElementById("country").value;
-			var district = document.getElementById("district").value;
-			var ward = document.getElementById("ward").value;
-			var avatar = document.getElementById("inputAvatar").value; // Lấy giá trị của trường input file
+function validateForm() {
+    var gender = document.getElementById("gender").value;
+    var country = document.getElementById("country").value;
+    var district = document.getElementById("district").value;
+    var ward = document.getElementById("ward").value;
+    var avatar = document.getElementById("inputAvatar").value; // Lấy giá trị của trường input file
 
-			// Kiểm tra giá trị của các trường select
-			if (gender === "" || gender === "Chọn giới tính") {
-				alert("Vui lòng chọn giới tính.");
-				return false;
-			}
+    // Kiểm tra giá trị của các trường select
+    if (gender === "" || gender === "Chọn giới tính") {
+        alert("Vui lòng chọn giới tính.");
+        return false;
+    }
 
-			if (country === "") {
-				alert("Vui lòng chọn Tỉnh/Thành Phố.");
-				return false;
-			}
+    if (country === "") {
+        alert("Vui lòng chọn Tỉnh/Thành Phố.");
+        return false;
+    }
 
-			if (district === "") {
-				alert("Vui lòng chọn Quận/Huyện.");
-				return false;
-			}
+    if (district === "") {
+        alert("Vui lòng chọn Quận/Huyện.");
+        return false;
+    }
 
-			if (ward === "") {
-				alert("Vui lòng chọn Xã/Phường.");
-				return false;
-			}
+    if (ward === "") {
+        alert("Vui lòng chọn Xã/Phường.");
+        return false;
+    }
 
-			// Kiểm tra trường input file
-			if (avatar === "") {
-				alert("Vui lòng chọn ảnh đại diện.");
-				return false;
-			}
+    // Kiểm tra trường input file
+    if (avatar === "") {
+        alert("Vui lòng chọn ảnh đại diện.");
+        return false;
+    }
 
-			return true; // Cho phép submit form nếu đã được validate thành công
-		}
-	</script>
+    return true; // Cho phép submit form nếu đã được validate thành công
+}
+</script>
+	<script>
+	function reportLostKey() {
+	    // Hiển thị xác nhận từ người dùng
+	    if (confirm("Bạn có chắc chắn muốn báo mất key?")) {
+	        const form = document.getElementById('reportLostKeyForm');
+	        
+	        // Log URL action để debug
+	        console.log("Form action URL:", form.action);
+
+	        // Gửi yêu cầu đến server qua fetch
+	        fetch(form.action, {
+	            method: 'POST', // Gửi yêu cầu POST
+	        })
+	        .then(response => {
+	            console.log("Response status:", response.status); // Log trạng thái HTTP
+	            if (!response.ok) {
+	                throw new Error(`HTTP error! Status: ${response.status}`);
+	            }
+	            return response.json(); // Chuyển đổi phản hồi thành JSON
+	        })
+	        .then(data => {
+	            console.log("Response data:", data); // Log dữ liệu JSON từ server
+	            if (data.success) {
+	                alert(data.message || 'Key đã được báo mất thành công!');
+	            } else {
+	                alert(data.message || 'Không thể báo mất key. Vui lòng thử lại!');
+	            }
+	        })
+	        .catch(error => {
+	            console.error('Fetch error:', error); // Log lỗi
+	            alert('Đã xảy ra lỗi. Vui lòng thử lại!');
+	        });
+	    }
+	}
+</script>
 </body>
 </html>

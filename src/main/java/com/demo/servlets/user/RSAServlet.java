@@ -67,8 +67,6 @@ public class RSAServlet extends HttpServlet {
 				request.getRequestDispatcher("/WEB-INF/views/login/create_key.jsp").forward(request, response);
 			} else if (action.equalsIgnoreCase("genkey")) {
 				doGet_Genkey(request, response);
-			} else if (action.equalsIgnoreCase("renewkey")) {
-				doGet_RenewKey(request, response);
 			} else {
 				response.sendError(HttpServletResponse.SC_NOT_FOUND, "Action không hợp lệ.");
 			}
@@ -85,32 +83,43 @@ public class RSAServlet extends HttpServlet {
 	}
 
 	protected void doGet_Genkey(HttpServletRequest request, HttpServletResponse response) throws Exception {
-		KeyPairGenerator keyPairGen = KeyPairGenerator.getInstance("RSA");
-		keyPairGen.initialize(2048); // Kích thước khóa: 2048 bit
+	    // Kiểm tra thông tin người dùng từ session
+	    Users user = (Users) request.getSession().getAttribute("user");
 
-		// Tạo cặp khóa (KeyPair)
-		KeyPair keyPair = keyPairGen.generateKeyPair();
+	    // Nếu không có "user", kiểm tra "username" từ session
+	    if (user == null) {
+	        String username = (String) request.getSession().getAttribute("username");
+	        if (username == null || username.isEmpty()) {
+	            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Không tìm thấy thông tin người dùng.");
+	            return;
+	        }
 
-		// Lấy Public Key và Private Key
-		PublicKey publicKey = keyPair.getPublic();
-		PrivateKey privateKey = keyPair.getPrivate();
+	        // Nếu chỉ có "username", bỏ qua bước kiểm tra key hiện tại vì đây là trường hợp đăng ký
+	        UserModel userModel = new UserModel();
+	        user = userModel.findUserByUserName(username);
+	        if (user == null) {
+	            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Người dùng không tồn tại.");
+	            return;
+	        }
+	    }
 
-		// Mã hóa Public Key và Private Key thành Base64
-		String publicKeyString = Base64.getEncoder().encodeToString(publicKey.getEncoded());
-		String privateKeyString = Base64.getEncoder().encodeToString(privateKey.getEncoded());
+	    // Tạo key mới
+	    KeyPairGenerator keyPairGen = KeyPairGenerator.getInstance("RSA");
+	    keyPairGen.initialize(2048); // Kích thước key 2048 bit
+	    KeyPair keyPair = keyPairGen.generateKeyPair();
 
-		// Set Public Key và Private Key vào request attributes để hiển thị trên JSP
-		request.setAttribute("publicKey", publicKeyString);
-		request.setAttribute("privateKey", privateKeyString);
-		request.getRequestDispatcher("/WEB-INF/views/login/create_key.jsp").forward(request, response);
+	    // Mã hóa key thành chuỗi Base64
+	    String publicKeyString = Base64.getEncoder().encodeToString(keyPair.getPublic().getEncoded());
+	    String privateKeyString = Base64.getEncoder().encodeToString(keyPair.getPrivate().getEncoded());
 
+	    // Truyền public key và private key để hiển thị trên giao diện
+	    request.setAttribute("publicKey", publicKeyString);
+	    request.setAttribute("privateKey", privateKeyString);
+
+	    // Chuyển tiếp đến trang hiển thị key
+	    request.getRequestDispatcher("/WEB-INF/views/login/create_key.jsp").forward(request, response);
 	}
 
-	protected void doGet_RenewKey(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-		request.getRequestDispatcher("/WEB-INF/views/user/renew_key.jsp").forward(request, response);
-
-	}
 
 	protected void doPost(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
@@ -121,9 +130,45 @@ public class RSAServlet extends HttpServlet {
 			doPost_SavePrivateKey(request, response);
 		} else if (action.equalsIgnoreCase("savePublicKey")) {
           doPost_SavePublicKey(request, response);
+		} else if(action.equalsIgnoreCase("reportLostKey")) {
+			doPost_ReportLostKey(request, response);
 		}
 
 	}
+	protected void doPost_ReportLostKey(HttpServletRequest request, HttpServletResponse response)
+	        throws ServletException, IOException {
+	    response.setContentType("application/json");
+	    response.setCharacterEncoding("UTF-8");
+	    try {
+	        Users user = (Users) request.getSession().getAttribute("user");
+
+	        if (user == null) {
+	            response.getWriter().write("{\"success\": false, \"message\": \"Không tìm thấy người dùng.\"}");
+	            return;
+	        }
+
+	        PublicKeyUserModel publicKeyUserModel = new PublicKeyUserModel();
+	        PublicKeyUser currentKey = publicKeyUserModel.findActiveKeyByUserId(user.getId());
+
+	        if (currentKey == null) {
+	            response.getWriter().write("{\"success\": false, \"message\": \"Không tìm thấy key hoạt động.\"}");
+	            return;
+	        }
+
+	        currentKey.setExpire(new Timestamp(System.currentTimeMillis()));
+	        boolean isUpdated = publicKeyUserModel.update(currentKey);
+
+	        if (isUpdated) {
+	            response.getWriter().write("{\"success\": true, \"message\": \"Key đã được báo mất thành công.\"}");
+	        } else {
+	            response.getWriter().write("{\"success\": false, \"message\": \"Không thể báo mất key.\"}");
+	        }
+	    } catch (Exception e) {
+	        e.printStackTrace();
+	        response.getWriter().write("{\"success\": false, \"message\": \"Đã xảy ra lỗi khi xử lý.\"}");
+	    }
+	}
+
 
 	protected void doPost_UploadPrivateKey(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
@@ -142,22 +187,38 @@ public class RSAServlet extends HttpServlet {
 	}
 
 	protected void doPost_SavePublicKey(HttpServletRequest request, HttpServletResponse response) throws IOException {
-		String username = (String) request.getSession().getAttribute("username");
-		String publicKey = request.getParameter("publicKey");
-		UserModel userModel = new UserModel();
-		PublicKeyUserModel publicKeyUserModel = new PublicKeyUserModel();
-		Users users = userModel.findUserByUserName(username);
-		if (users != null) {
-             PublicKeyUser publicKeyUser = new PublicKeyUser();
-             publicKeyUser.setIdUser(users.getId());
-             publicKeyUser.setPublicKey(publicKey);
-             publicKeyUser.setCreatedAt(new Timestamp(new Date().getTime()));
-             publicKeyUser.setExpire(null);
-             if(publicKeyUserModel.create(publicKeyUser)) {
-            	 response.sendRedirect("login");
-             }
-		}
+	    Users user = (Users) request.getSession().getAttribute("user");
+	    String username = (user != null) ? user.getUserName() : (String) request.getSession().getAttribute("username");
+	    if (username == null || username.isEmpty()) {
+	        response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Không tìm thấy thông tin người dùng.");
+	        return;
+	    }
+	    String publicKey = request.getParameter("publicKey");
+	    if (publicKey == null || publicKey.isEmpty()) {
+	        response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Public Key không được để trống.");
+	        return;
+	    }
+	    UserModel userModel = new UserModel();
+	    if (user == null) {
+	        user = userModel.findUserByUserName(username);
+	    }
+	    if (user == null) {
+	        response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Người dùng không tồn tại.");
+	        return;
+	    }
+	    PublicKeyUserModel publicKeyUserModel = new PublicKeyUserModel();
+	    PublicKeyUser publicKeyUser = new PublicKeyUser();
+	    publicKeyUser.setIdUser(user.getId());
+	    publicKeyUser.setPublicKey(publicKey);
+	    publicKeyUser.setCreatedAt(new Timestamp(new Date().getTime()));
+	    publicKeyUser.setExpire(null);
+	    if (publicKeyUserModel.create(publicKeyUser)) {
+	        response.sendRedirect("login"); 
+	    } else {
+	        response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Không thể lưu Public Key.");
+	    }
 	}
+
 
 	protected void doPost_SavePrivateKey(HttpServletRequest request, HttpServletResponse response) throws IOException {
 		String privateKeyString = (String) request.getParameter("privateKey");
@@ -175,11 +236,6 @@ public class RSAServlet extends HttpServlet {
 		} catch (IOException e) {
 			response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Lỗi khi tạo file private key");
 		}
-	}
-
-	protected void doPost_RenewKey(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-
 	}
 
 }

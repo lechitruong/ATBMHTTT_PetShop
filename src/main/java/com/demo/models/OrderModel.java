@@ -127,7 +127,7 @@ public class OrderModel {
 			boolean result = true;
 			try {
 				PreparedStatement preparedStatement = ConnectDB.connection().prepareStatement(
-						"insert into orders(phoneNumber, email,note,orderDate, totalMoney, status, userId, addressId) values (?,?,?,?,?,?,?,?)");
+						"insert into orders(phoneNumber, email,note,orderDate, totalMoney, status, userId, addressId,signature, publicKeyId) values (?,?,?,?,?,?,?,?,?,?)");
 				preparedStatement.setString(1, order.getPhoneNumber());
 				preparedStatement.setString(2, order.getEmail());
 				preparedStatement.setString(3, order.getNote());
@@ -136,6 +136,8 @@ public class OrderModel {
 				preparedStatement.setInt(6, order.getStatus());
 				preparedStatement.setInt(7, order.getUserId());
 				preparedStatement.setInt(8, order.getAddressId());
+				preparedStatement.setString(9, order.getSignature());
+				preparedStatement.setInt(10, order.getPublicKeyId());
 				result = preparedStatement.executeUpdate() > 0;
 			} catch (Exception e) {
 				// TODO: handle exception
@@ -153,7 +155,7 @@ public class OrderModel {
 			try {
 				PreparedStatement preparedStatement = ConnectDB.connection()
 						.prepareStatement("update orders set phoneNumber = ?, email = ?, "
-								+ "note = ?, orderDate = ?, totalMoney = ?, status = ? ,userId = ?,addressId =?"
+								+ "note = ?, orderDate = ?, totalMoney = ?, status = ? ,userId = ?,addressId =?, signature =?, publicKeyId=?"
 								+ " where id = ? ");
 				preparedStatement.setString(1, order.getPhoneNumber());
 				preparedStatement.setString(2, order.getEmail());
@@ -163,7 +165,9 @@ public class OrderModel {
 				preparedStatement.setInt(6, order.getStatus());
 				preparedStatement.setInt(7, order.getUserId());
 				preparedStatement.setInt(8, order.getAddressId());
-				preparedStatement.setInt(9, order.getId());
+				preparedStatement.setString(9, order.getSignature());
+				preparedStatement.setInt(10, order.getPublicKeyId());
+				preparedStatement.setInt(11, order.getId());
 				result = preparedStatement.executeUpdate() > 0;
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -264,6 +268,8 @@ public class OrderModel {
 					order.setStatus(resultSet.getInt("status"));
 					order.setUserId(resultSet.getInt("userId"));
 					order.setAddressId(resultSet.getInt("addressId"));
+					order.setSignature(resultSet.getString("signature"));
+					order.setPublicKeyId(resultSet.getInt("publicKeyId"));
 					orders.add(order);
 				}
 			} catch (Exception e) {
@@ -274,6 +280,35 @@ public class OrderModel {
 			}
 			return orders;
 		}
+		public Orders findLastOrderByUserId(int userId) {
+		    Orders lastOrder = null;
+		    try {
+		        String sql = "SELECT * FROM orders WHERE userId = ? ORDER BY orderDate DESC LIMIT 1";
+		        PreparedStatement preparedStatement = ConnectDB.connection().prepareStatement(sql);
+		        preparedStatement.setInt(1, userId);
+		        ResultSet resultSet = preparedStatement.executeQuery();
+		        if (resultSet.next()) {
+		            lastOrder = new Orders();
+		            lastOrder.setId(resultSet.getInt("id"));
+		            lastOrder.setPhoneNumber(resultSet.getString("phoneNumber"));
+		            lastOrder.setEmail(resultSet.getString("email"));
+		            lastOrder.setNote(resultSet.getString("note"));
+		            lastOrder.setOrderDate(resultSet.getTimestamp("orderDate"));
+		            lastOrder.setTotalMoney(resultSet.getDouble("totalMoney"));
+		            lastOrder.setStatus(resultSet.getInt("status"));
+		            lastOrder.setUserId(resultSet.getInt("userId"));
+		            lastOrder.setAddressId(resultSet.getInt("addressId"));
+		            lastOrder.setSignature(resultSet.getString("signature"));
+		            lastOrder.setPublicKeyId(resultSet.getInt("publicKeyId"));
+		        }
+		    } catch (Exception e) {
+		        e.printStackTrace();
+		    } finally {
+		        ConnectDB.disconnect();
+		    }
+		    return lastOrder;
+		}
+
 		public List<OrderDetails> getAllOrderdetails() {
 			List<OrderDetails> ordersList = new ArrayList<>();
 

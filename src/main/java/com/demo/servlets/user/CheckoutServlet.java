@@ -20,17 +20,21 @@ import org.apache.http.client.utils.DateUtils;
 import com.demo.entities.Address;
 import com.demo.entities.Bills;
 import com.demo.entities.Item;
+import com.demo.entities.Log;
 import com.demo.entities.OrderDetails;
 import com.demo.entities.OrderKey;
 import com.demo.entities.Orders;
 import com.demo.entities.Pets;
 import com.demo.entities.PublicKeyUser;
 import com.demo.entities.Users;
+import com.demo.helpers.ConfigIP;
+import com.demo.helpers.IPAddressUtil;
 import com.demo.helpers.MD5;
 import com.demo.helpers.RSA;
 import com.demo.models.AddressModel;
 import com.demo.models.BillModel;
 import com.demo.models.ItemModel;
+import com.demo.models.LogModel;
 import com.demo.models.OrderDetailModel;
 import com.demo.models.OrderModel;
 import com.demo.models.PetModel;
@@ -92,22 +96,27 @@ public class CheckoutServlet extends HttpServlet {
 	        Users user = (Users) request.getSession().getAttribute("user");
 	        RSA rsa = new RSA();
 	        PublicKeyUser key = keyModel.findByAccountID(user.getId());
-	        OrderKey orderKey = (OrderKey) request.getSession().getAttribute("orderKey");
-
 	        try {
-	            // Kiểm tra chữ ký bằng RSA
-	            boolean isValid = rsa.verify(orderKey.toString(), chuky.trim(), key.getPublicKey());
-
-	            // Gửi lại kết quả cho client
-	            if (isValid) {
-	                response.getWriter().write("correct"); // Chữ ký hợp lệ
-	            } else {
-	                response.getWriter().write("incorrect"); // Chữ ký không hợp lệ
-	            }
-	        } catch (Exception e) {
-	            response.getWriter().write("error"); // Lỗi khi kiểm tra
-	            e.printStackTrace();
-	        }
+				String encHash = rsa.decryptWithPublicKey(chuky, key.getPublicKey());
+				if(hash.equals(encHash)) {
+					OrderModel orderModel = new OrderModel();
+					Orders order = orderModel.findLastOrderByUserId(user.getId());
+					System.out.println(order);
+					order.setSignature(chuky);
+					order.setPublicKeyId(key.getId());
+					order.setStatus(2);
+					if(orderModel.update(order)) {
+						response.getWriter().write("correct"); // Chữ ký hợp lệ
+					}else {
+						response.getWriter().write("incorrect"); // Chữ ký không hợp lệ
+					}		
+				}else {
+					response.getWriter().write("incorrect"); // Chữ ký không hợp lệ
+				}
+			} catch (Exception e) {
+				  response.getWriter().write("error"); // Lỗi khi kiểm tra
+				e.printStackTrace();
+			}
 	    }
 
 		
@@ -134,6 +143,7 @@ public class CheckoutServlet extends HttpServlet {
 	    OrderDetailModel orderDetailModel = new OrderDetailModel();
 	    PetModel petModel = new PetModel();
 	    BillModel billModel = new BillModel();
+	    LogModel logModel = new LogModel();
 	    MD5 md5 = new MD5();
 	    PrintWriter printWriter = response.getWriter();
 	    // ktra xem sản phẩm trong giỏ hàng còn trước khi đặt hàng không
@@ -165,6 +175,7 @@ public class CheckoutServlet extends HttpServlet {
 	    List<OrderDetails> listOrderDetails = new ArrayList<OrderDetails>();
 	    if (orderModel.create(order)) {	
 	    	request.getSession().removeAttribute("cart");
+	    	logModel.create(new Log(IPAddressUtil.getPublicIPAddress(),"info",ConfigIP.ipconfig(request).getCountryLong(),new Timestamp(new Date().getTime()), "Đang mua đơn hàng", "Đã mua đơn hàng thành công" + order.toString() , user.getId()));
 	        int orderId = orderModel.getLastOrder().getId(); 
 	        Bills bill = new Bills();
 	        bill.setOrderId(orderId);
